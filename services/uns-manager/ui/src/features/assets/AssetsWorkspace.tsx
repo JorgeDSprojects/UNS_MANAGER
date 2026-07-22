@@ -38,6 +38,7 @@ export function AssetsWorkspace() {
   const { pushToast } = useToast();
 
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [isCreatePanelExpanded, setIsCreatePanelExpanded] = useState(false);
 
   const assets = assetsTreeQuery.data ?? [];
   const selectedPath = useMemo(() => {
@@ -64,8 +65,13 @@ export function AssetsWorkspace() {
   );
 
   return (
-    <div className="panel-grid two-col">
-      <div className="panel-grid">
+    <div className="panel-grid two-col assets-layout">
+      <aside className="panel-grid tree-column tree-column-sticky">
+        {assetsTreeQuery.isError ? <ErrorBanner message={assetsTreeQuery.error.message} /> : null}
+        <AssetsTreePanel assets={assets} onSelect={setSelectedAssetId} selectedAssetId={selectedAssetId} />
+      </aside>
+
+      <div className="panel-grid asset-detail-column">
         <section className="panel">
           <div className="inline-row" style={{ justifyContent: "space-between" }}>
             <h4 className="panel-title">Current ISA Context</h4>
@@ -93,37 +99,55 @@ export function AssetsWorkspace() {
           </div>
         </section>
 
-        <CreateAssetActions
-          disabled={createManualMutation.isPending || createFromTemplateMutation.isPending}
-          onCreateFromTemplate={(payload: CreateAssetFromTemplatePayload) => {
-            createFromTemplateMutation.mutate(payload, {
-              onSuccess: (created) => {
-                setSelectedAssetId(created.id);
-                pushToast("Asset created from template", "success");
-              },
-              onError: (error) => pushToast(error.message, "error"),
-            });
-          }}
-          onCreateManual={(payload: CreateAssetPayload) => {
-            createManualMutation.mutate(payload, {
-              onSuccess: (created) => {
-                setSelectedAssetId(created.id);
-                pushToast("Asset created", "success");
-              },
-              onError: (error) => pushToast(error.message, "error"),
-            });
-          }}
-          selectedParent={selectedParent}
-          templateOptions={templateOptions}
-        />
+        <section className="panel">
+          <button
+            aria-expanded={isCreatePanelExpanded}
+            className="collapsible-trigger"
+            onClick={() => setIsCreatePanelExpanded((previous) => !previous)}
+            type="button"
+          >
+            <span className="panel-title">Create Asset</span>
+            <span className="chip">{isCreatePanelExpanded ? "Expanded" : "Collapsed"}</span>
+          </button>
 
-        {assetsTreeQuery.isError ? <ErrorBanner message={assetsTreeQuery.error.message} /> : null}
+          {isCreatePanelExpanded ? (
+            <div className="collapsible-body">
+              <CreateAssetActions
+                disabled={createManualMutation.isPending || createFromTemplateMutation.isPending}
+                onCreateFromTemplate={(payload: CreateAssetFromTemplatePayload) => {
+                  createFromTemplateMutation.mutate(payload, {
+                    onSuccess: (created) => {
+                      setSelectedAssetId(created.id);
+                      pushToast("Asset created from template", "success");
+                    },
+                    onError: (error) => pushToast(error.message, "error"),
+                  });
+                }}
+                onCreateManual={(payload: CreateAssetPayload) => {
+                  createManualMutation.mutate(payload, {
+                    onSuccess: (created) => {
+                      setSelectedAssetId(created.id);
+                      pushToast("Asset created", "success");
+                    },
+                    onError: (error) => pushToast(error.message, "error"),
+                  });
+                }}
+                selectedParent={selectedParent}
+                showContainer={false}
+                showTitle={false}
+                templateOptions={templateOptions}
+              />
+            </div>
+          ) : (
+            <p className="message muted" style={{ marginTop: 8 }}>
+              Expand this panel to create manual assets or instantiate from templates.
+            </p>
+          )}
+        </section>
+
         {templatesQuery.isError ? <ErrorBanner message={templatesQuery.error.message} /> : null}
-
-        <AssetsTreePanel assets={assets} onSelect={setSelectedAssetId} selectedAssetId={selectedAssetId} />
+        <AssetInspectorPanel onDeleted={() => setSelectedAssetId(null)} selectedAssetId={selectedAssetId} />
       </div>
-
-      <AssetInspectorPanel onDeleted={() => setSelectedAssetId(null)} selectedAssetId={selectedAssetId} />
     </div>
   );
 }

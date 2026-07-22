@@ -43,6 +43,7 @@ test("templates and assets critical flow", async ({ page, request }) => {
   await expect(page.getByRole("heading", { name: "Assets" })).toBeVisible();
 
   await page.getByRole("button", { name: enterpriseName }).first().click();
+  await page.getByRole("button", { name: "Create Asset" }).click();
   await page.getByLabel("Template").selectOption({ label: templateName });
   await page.locator("#from-template-name").fill(siteFromTemplateName);
   await page.getByRole("button", { name: "Create from Template" }).click();

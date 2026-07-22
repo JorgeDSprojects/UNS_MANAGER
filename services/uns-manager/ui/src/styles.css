@@ -241,6 +241,23 @@ select {
 
 .panel-grid.two-col {
   grid-template-columns: minmax(280px, 360px) 1fr;
+  align-items: start;
+}
+
+.assets-layout {
+  align-items: start;
+}
+
+.tree-column-sticky {
+  position: sticky;
+  top: 84px;
+  max-height: calc(100vh - 130px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.asset-detail-column {
+  align-content: start;
 }
 
 .panel {
@@ -389,6 +406,30 @@ select {
   margin-top: 4px;
 }
 
+.tree-collapse-button,
+.tree-collapse-placeholder {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.tree-collapse-button {
+  border: 1px solid var(--line);
+  background: var(--bg-input);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.tree-collapse-placeholder {
+  opacity: 0;
+}
+
 .tree-node button {
   border: none;
   background: transparent;
@@ -480,6 +521,22 @@ select {
   letter-spacing: 0.06em;
   color: var(--text-soft);
   font-size: 0.72rem;
+}
+
+.collapsible-trigger {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.collapsible-body {
+  margin-top: 10px;
 }
 
 .tag {
@@ -626,6 +683,12 @@ select {
 @media (max-width: 1100px) {
   .panel-grid.two-col {
     grid-template-columns: 1fr;
+  }
+
+  .tree-column-sticky {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .status-strip-content {

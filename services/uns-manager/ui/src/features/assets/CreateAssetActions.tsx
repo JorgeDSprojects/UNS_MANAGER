@@ -22,6 +22,8 @@ type CreateAssetActionsProps = {
   onCreateManual: (payload: CreateAssetPayload) => void;
   onCreateFromTemplate: (payload: CreateAssetFromTemplatePayload) => void;
   disabled?: boolean;
+  showContainer?: boolean;
+  showTitle?: boolean;
 };
 
 export function CreateAssetActions({
@@ -30,6 +32,8 @@ export function CreateAssetActions({
   onCreateManual,
   onCreateFromTemplate,
   disabled = false,
+  showContainer = true,
+  showTitle = true,
 }: CreateAssetActionsProps) {
   const [manualName, setManualName] = useState("");
   const [fromTemplateName, setFromTemplateName] = useState("");
@@ -53,9 +57,9 @@ export function CreateAssetActions({
   const canCreateFromTemplate =
     Boolean(targetLevel && templateId && fromTemplateName.trim() && !fromTemplateNameError) && !disabled;
 
-  return (
-    <section className="panel">
-      <h4 className="panel-title">Create Asset</h4>
+  const content = (
+    <>
+      {showTitle ? <h4 className="panel-title">Create Asset</h4> : null}
       <p className="message muted" style={{ marginTop: 8 }}>
         Parent: {selectedParent ? `${selectedParent.name} (${selectedParent.level})` : "ROOT"}
       </p>
@@ -152,6 +156,12 @@ export function CreateAssetActions({
           </button>
         </div>
       </div>
-    </section>
+    </>
   );
+
+  if (!showContainer) {
+    return content;
+  }
+
+  return <section className="panel">{content}</section>;
 }
