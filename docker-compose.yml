@@ -18,6 +18,18 @@ services:
       retries: 5
       start_period: 10s
 
+  emqx:
+    image: emqx/emqx:5.8
+    environment:
+      EMQX_DASHBOARD__DEFAULT_USERNAME: admin
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:-public}
+    ports:
+      - "1883:1883"
+      - "8083:8083"
+      - "18083:18083"
+    networks:
+      - backend
+
   uns-manager:
     build: ./services/uns-manager
     env_file:
@@ -27,6 +39,19 @@ services:
         condition: service_healthy
     ports:
       - "${UNS_MANAGER_HOST_PORT:-8002}:8002"
+    networks:
+      - backend
+
+  sync-service:
+    build: ./services/sync-service
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      emqx:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - backend
 
