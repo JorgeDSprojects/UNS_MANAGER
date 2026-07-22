@@ -6,6 +6,7 @@ import { StatusSyncBadge } from "../features/status-sync/StatusSyncBadge";
 test("renders healthy sync badge", () => {
   render(
     <StatusSyncBadge
+      isRefreshing={false}
       status={{
         service: "uns-manager",
         version: "0.1.0",

@@ -1,87 +1,261 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useDirtyGuard } from "../../shared/forms/useDirtyGuard";
+import { formatJson, parseJsonInput } from "../../shared/forms/jsonEditor";
+import { useToast } from "../../shared/ui/ToastProvider";
 import { ErrorBanner } from "../../shared/ui/ErrorBanner";
 import { validateAssetName } from "../../shared/validation/assetName";
-import { useAssetDetailQuery, useUpdateAssetMutation } from "./hooks";
+import { AssetInformationalTable } from "./AssetInformationalTable";
+import {
+  useAssetDetailQuery,
+  useCreateAssetInformationalMutation,
+  useDeleteAssetInformationalMutation,
+  useDeleteAssetMutation,
+  useUpdateAssetInformationalMutation,
+  useUpdateAssetMutation,
+} from "./hooks";
+import type { InformationalFieldCreatePayload, InformationalFieldUpdatePayload } from "./types";
 
 type AssetInspectorPanelProps = {
   selectedAssetId: string | null;
+  onDeleted: () => void;
 };
 
-export function AssetInspectorPanel({ selectedAssetId }: AssetInspectorPanelProps) {
+export function AssetInspectorPanel({ selectedAssetId, onDeleted }: AssetInspectorPanelProps) {
   const detailQuery = useAssetDetailQuery(selectedAssetId);
   const updateMutation = useUpdateAssetMutation();
+  const deleteMutation = useDeleteAssetMutation();
+  const createInfoMutation = useCreateAssetInformationalMutation();
+  const updateInfoMutation = useUpdateAssetInformationalMutation();
+  const deleteInfoMutation = useDeleteAssetInformationalMutation();
+  const { pushToast } = useToast();
+
   const [assetName, setAssetName] = useState("");
+  const [descriptiveJson, setDescriptiveJson] = useState("{}");
+  const [analyticalJson, setAnalyticalJson] = useState("{}");
+  const [scadaAvailable, setScadaAvailable] = useState(true);
+  const [active, setActive] = useState(true);
 
   useEffect(() => {
     if (detailQuery.data) {
       setAssetName(detailQuery.data.name);
+      setDescriptiveJson(formatJson(detailQuery.data.descriptive));
+      setAnalyticalJson(formatJson(detailQuery.data.analytical));
+      setScadaAvailable(detailQuery.data.scada_available);
+      setActive(detailQuery.data.is_active);
     }
   }, [detailQuery.data]);
 
-  const canSave = useMemo(
-    () => Boolean(selectedAssetId) && assetName.trim().length > 0,
-    [assetName, selectedAssetId],
+  const nameError = assetName.length > 0 ? validateAssetName(assetName) : null;
+  const descriptiveParse = useMemo(() => parseJsonInput(descriptiveJson), [descriptiveJson]);
+  const analyticalParse = useMemo(() => parseJsonInput(analyticalJson), [analyticalJson]);
+
+  const currentDetail = detailQuery.data;
+  const isDirty = Boolean(currentDetail) && (
+    assetName !== currentDetail.name ||
+    descriptiveJson !== formatJson(currentDetail.descriptive) ||
+    analyticalJson !== formatJson(currentDetail.analytical) ||
+    scadaAvailable !== currentDetail.scada_available ||
+    active !== currentDetail.is_active
   );
-  const validationError = validateAssetName(assetName);
-  const shownValidationError = assetName.length > 0 ? validationError : null;
-  const isDirty = Boolean(detailQuery.data) && assetName !== detailQuery.data?.name;
   const { confirmNavigation } = useDirtyGuard(isDirty);
+
+  const canSave = Boolean(
+    selectedAssetId &&
+      !nameError &&
+      assetName.trim().length > 0 &&
+      descriptiveParse.ok &&
+      analyticalParse.ok,
+  );
 
   if (!selectedAssetId) {
     return (
-      <section className="rounded border border-slate-200 bg-white p-3">
-        <h4 className="text-sm font-semibold text-slate-700">Asset Inspector</h4>
-        <p className="mt-2 text-sm text-slate-500">Select an asset to inspect.</p>
+      <section className="panel">
+        <h4 className="panel-title">Asset Inspector</h4>
+        <p className="message muted">Select an asset node to inspect and edit runtime fields.</p>
       </section>
     );
   }
 
   return (
-    <section className="rounded border border-slate-200 bg-white p-3">
-      <h4 className="mb-2 text-sm font-semibold text-slate-700">Asset Inspector</h4>
-      {detailQuery.isLoading ? <p className="text-sm text-slate-500">Loading asset...</p> : null}
+    <section className="panel">
+      <div className="inline-row" style={{ justifyContent: "space-between" }}>
+        <h4 className="panel-title">Asset Inspector</h4>
+        <span className="chip">{currentDetail?.asset_level ?? "unknown"}</span>
+      </div>
+
+      {detailQuery.isLoading ? <p className="message muted">Loading asset...</p> : null}
       {detailQuery.isError ? <ErrorBanner message={detailQuery.error.message} /> : null}
 
-      <label className="block text-sm" htmlFor="asset-name">
-        Asset Name
-      </label>
-      <input
-        className="w-full rounded border border-slate-300 px-2 py-1"
-        id="asset-name"
-        onChange={(event) => setAssetName(event.target.value)}
-        value={assetName}
-      />
-      {shownValidationError ? <p className="mt-1 text-sm text-red-600">{shownValidationError}</p> : null}
+      <div className="split-fields" style={{ marginTop: 10 }}>
+        <div className="field-group">
+          <label className="field-label" htmlFor="asset-name">
+            Asset Name
+          </label>
+          <input
+            className="field-input"
+            id="asset-name"
+            onChange={(event) => setAssetName(event.target.value)}
+            value={assetName}
+          />
+          {nameError ? <p className="message error">{nameError}</p> : null}
+        </div>
 
-      <div className="mt-3 flex items-center gap-2">
+        <div className="field-group">
+          <label className="field-label">State</label>
+          <label className="chip" style={{ cursor: "pointer", width: "fit-content" }}>
+            <input
+              checked={scadaAvailable}
+              onChange={(event) => setScadaAvailable(event.target.checked)}
+              type="checkbox"
+            />
+            SCADA available
+          </label>
+          <label className="chip" style={{ cursor: "pointer", width: "fit-content" }}>
+            <input checked={active} onChange={(event) => setActive(event.target.checked)} type="checkbox" />
+            Active
+          </label>
+        </div>
+      </div>
+
+      <div className="split-fields">
+        <div className="field-group">
+          <label className="field-label" htmlFor="asset-descriptive-json">
+            Descriptive (JSON)
+          </label>
+          <textarea
+            className="field-textarea"
+            id="asset-descriptive-json"
+            onChange={(event) => setDescriptiveJson(event.target.value)}
+            value={descriptiveJson}
+          />
+          {!descriptiveParse.ok ? <p className="message error">{descriptiveParse.error}</p> : null}
+        </div>
+
+        <div className="field-group">
+          <label className="field-label" htmlFor="asset-analytical-json">
+            Analytical (JSON)
+          </label>
+          <textarea
+            className="field-textarea"
+            id="asset-analytical-json"
+            onChange={(event) => setAnalyticalJson(event.target.value)}
+            value={analyticalJson}
+          />
+          {!analyticalParse.ok ? <p className="message error">{analyticalParse.error}</p> : null}
+        </div>
+      </div>
+
+      <div className="panel-toolbar">
         <button
-          className="rounded border border-slate-300 px-2 py-1 text-sm"
-          disabled={!canSave || updateMutation.isPending || Boolean(shownValidationError)}
+          className="button"
+          disabled={!canSave || updateMutation.isPending}
           onClick={() => {
-            if (selectedAssetId) {
-              updateMutation.mutate({ id: selectedAssetId, payload: { name: assetName } });
+            if (!selectedAssetId || !descriptiveParse.ok || !analyticalParse.ok) {
+              return;
             }
+
+            updateMutation.mutate(
+              {
+                id: selectedAssetId,
+                payload: {
+                  name: assetName,
+                  descriptive: descriptiveParse.value,
+                  analytical: analyticalParse.value,
+                  scada_available: scadaAvailable,
+                  is_active: active,
+                },
+              },
+              {
+                onSuccess: () => pushToast("Asset saved", "success"),
+                onError: (error) => pushToast(error.message, "error"),
+              },
+            );
           }}
           type="button"
         >
           Save
         </button>
         <button
-          className="rounded border border-slate-300 px-2 py-1 text-sm"
+          className="button secondary"
           onClick={() => {
-            if (!confirmNavigation()) {
+            if (!confirmNavigation() || !currentDetail) {
               return;
             }
-            setAssetName(detailQuery.data?.name ?? "");
+            setAssetName(currentDetail.name);
+            setDescriptiveJson(formatJson(currentDetail.descriptive));
+            setAnalyticalJson(formatJson(currentDetail.analytical));
+            setScadaAvailable(currentDetail.scada_available);
+            setActive(currentDetail.is_active);
           }}
           type="button"
         >
-          Reset
+          Discard
         </button>
-        {updateMutation.isSuccess ? <p className="text-sm text-emerald-700">Saved</p> : null}
-        {updateMutation.isError ? <ErrorBanner message={updateMutation.error.message} /> : null}
+        <button
+          className="button danger"
+          onClick={() => {
+            if (!selectedAssetId || !window.confirm("Delete selected asset and descendants?")) {
+              return;
+            }
+            deleteMutation.mutate(selectedAssetId, {
+              onSuccess: () => {
+                pushToast("Asset deleted", "success");
+                onDeleted();
+              },
+              onError: (error) => pushToast(error.message, "error"),
+            });
+          }}
+          type="button"
+        >
+          Delete Asset
+        </button>
+      </div>
+
+      {updateMutation.isSuccess ? <p className="message success">Saved</p> : null}
+
+      <div style={{ marginTop: 12 }}>
+        <AssetInformationalTable
+          assetLevel={currentDetail?.asset_level ?? "enterprise"}
+          disabled={createInfoMutation.isPending || updateInfoMutation.isPending || deleteInfoMutation.isPending}
+          onCreate={(payload: InformationalFieldCreatePayload) => {
+            if (!selectedAssetId) {
+              return;
+            }
+            createInfoMutation.mutate(
+              { assetId: selectedAssetId, payload },
+              {
+                onSuccess: () => pushToast("Asset informational field created", "success"),
+                onError: (error) => pushToast(error.message, "error"),
+              },
+            );
+          }}
+          onDelete={(fieldId: string) => {
+            if (!selectedAssetId || !window.confirm("Delete informational field?")) {
+              return;
+            }
+            deleteInfoMutation.mutate(
+              { assetId: selectedAssetId, fieldId },
+              {
+                onSuccess: () => pushToast("Asset informational field deleted", "success"),
+                onError: (error) => pushToast(error.message, "error"),
+              },
+            );
+          }}
+          onUpdate={(fieldId: string, payload: InformationalFieldUpdatePayload) => {
+            if (!selectedAssetId) {
+              return;
+            }
+            updateInfoMutation.mutate(
+              { assetId: selectedAssetId, fieldId, payload },
+              {
+                onSuccess: () => pushToast("Asset informational field updated", "success"),
+                onError: (error) => pushToast(error.message, "error"),
+              },
+            );
+          }}
+          rows={currentDetail?.informational ?? []}
+        />
       </div>
     </section>
   );

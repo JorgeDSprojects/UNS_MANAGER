@@ -10,18 +10,26 @@ test("calls from-template action with selected template", async () => {
 
   render(
     <CreateAssetActions
-      allowedTemplates={[{ id: "tpl-1", name: "VESTAS_V90_2MW" }]}
+      selectedParent={{
+        id: "11111111-1111-1111-1111-111111111111",
+        level: "enterprise",
+        name: "ENT_1",
+      }}
+      templateOptions={[{ id: "tpl-1", level: "site", name: "VESTAS_V90_2MW" }]}
       onCreateFromTemplate={onFromTemplate}
       onCreateManual={() => {}}
-      parentId="11111111-1111-1111-1111-111111111111"
     />,
   );
 
   await user.selectOptions(screen.getByLabelText("Template"), "tpl-1");
+  await user.type(screen.getByLabelText("Asset Name"), "SITE_FROM_TEMPLATE");
   await user.click(screen.getByRole("button", { name: "Create from Template" }));
 
   expect(onFromTemplate).toHaveBeenCalledWith({
     parent_id: "11111111-1111-1111-1111-111111111111",
     template_id: "tpl-1",
+    name: "SITE_FROM_TEMPLATE",
+    descriptive_overrides: {},
+    analytical_overrides: {},
   });
 });

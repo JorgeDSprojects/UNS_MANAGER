@@ -7,26 +7,28 @@ test("shows range columns for subsystem", () => {
   render(
     <TemplateInformationalTable
       onCreate={() => {}}
+      onUpdate={() => {}}
       onDelete={() => {}}
       rows={[]}
       templateLevel="subsystem"
     />,
   );
 
-  expect(screen.getByText("range_min")).toBeInTheDocument();
-  expect(screen.getByText("range_max")).toBeInTheDocument();
+  expect(screen.getAllByText("range_min").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("range_max").length).toBeGreaterThan(0);
 });
 
 test("shows aggregation columns for equipment", () => {
   render(
     <TemplateInformationalTable
       onCreate={() => {}}
+      onUpdate={() => {}}
       onDelete={() => {}}
       rows={[]}
       templateLevel="equipment"
     />,
   );
 
-  expect(screen.getByText("agg_type")).toBeInTheDocument();
-  expect(screen.getByText("source_field")).toBeInTheDocument();
+  expect(screen.getAllByText("agg_type").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("source_field").length).toBeGreaterThan(0);
 });

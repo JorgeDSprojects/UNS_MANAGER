@@ -25,5 +25,5 @@ export function StatusSyncContainer() {
   const query = useStatusSyncQuery();
   const status = query.data ?? DEFAULT_STATUS;
 
-  return <StatusSyncBadge status={status} />;
+  return <StatusSyncBadge isRefreshing={query.isFetching} status={status} />;
 }

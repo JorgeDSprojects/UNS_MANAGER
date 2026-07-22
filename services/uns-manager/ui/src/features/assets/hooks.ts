@@ -3,15 +3,22 @@ import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tan
 import {
   createAsset,
   createAssetFromTemplate,
+  createAssetInformational,
   deleteAsset,
+  deleteAssetInformational,
   fetchAssetDetail,
+  fetchAssetInformational,
   fetchAssetsTree,
   updateAsset,
+  updateAssetInformational,
 } from "./api";
 import type {
+  AssetInformationalField,
   AssetRecord,
   CreateAssetFromTemplatePayload,
   CreateAssetPayload,
+  InformationalFieldCreatePayload,
+  InformationalFieldUpdatePayload,
   UpdateAssetPayload,
 } from "./types";
 
@@ -32,13 +39,24 @@ export function useAssetDetailQuery(assetId: string | null): UseQueryResult<Asse
   });
 }
 
+export function useAssetInformationalQuery(
+  assetId: string | null,
+): UseQueryResult<AssetInformationalField[], Error> {
+  return useQuery({
+    queryKey: ["asset-informational", assetId],
+    queryFn: () => fetchAssetInformational(assetId as string),
+    enabled: Boolean(assetId),
+    retry: false,
+  });
+}
+
 export function useCreateAssetMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (payload: CreateAssetPayload) => createAsset(payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["assets-tree"] });
+      void queryClient.invalidateQueries({ queryKey: ["assets-tree"], exact: false });
     },
   });
 }
@@ -49,7 +67,7 @@ export function useCreateFromTemplateMutation() {
   return useMutation({
     mutationFn: (payload: CreateAssetFromTemplatePayload) => createAssetFromTemplate(payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["assets-tree"] });
+      void queryClient.invalidateQueries({ queryKey: ["assets-tree"], exact: false });
     },
   });
 }
@@ -65,7 +83,7 @@ export function useUpdateAssetMutation() {
   return useMutation({
     mutationFn: ({ id, payload }: UpdateAssetVariables) => updateAsset(id, payload),
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["assets-tree"] });
+      void queryClient.invalidateQueries({ queryKey: ["assets-tree"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["asset-detail", variables.id] });
     },
   });
@@ -77,7 +95,59 @@ export function useDeleteAssetMutation() {
   return useMutation({
     mutationFn: (assetId: string) => deleteAsset(assetId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["assets-tree"] });
+      void queryClient.invalidateQueries({ queryKey: ["assets-tree"], exact: false });
+    },
+  });
+}
+
+type CreateInformationalVariables = {
+  assetId: string;
+  payload: InformationalFieldCreatePayload;
+};
+
+export function useCreateAssetInformationalMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ assetId, payload }: CreateInformationalVariables) => createAssetInformational(assetId, payload),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["asset-detail", variables.assetId] });
+      void queryClient.invalidateQueries({ queryKey: ["asset-informational", variables.assetId] });
+    },
+  });
+}
+
+type UpdateInformationalVariables = {
+  assetId: string;
+  fieldId: string;
+  payload: InformationalFieldUpdatePayload;
+};
+
+export function useUpdateAssetInformationalMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ fieldId, payload }: UpdateInformationalVariables) => updateAssetInformational(fieldId, payload),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["asset-detail", variables.assetId] });
+      void queryClient.invalidateQueries({ queryKey: ["asset-informational", variables.assetId] });
+    },
+  });
+}
+
+type DeleteInformationalVariables = {
+  assetId: string;
+  fieldId: string;
+};
+
+export function useDeleteAssetInformationalMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ fieldId }: DeleteInformationalVariables) => deleteAssetInformational(fieldId),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["asset-detail", variables.assetId] });
+      void queryClient.invalidateQueries({ queryKey: ["asset-informational", variables.assetId] });
     },
   });
 }

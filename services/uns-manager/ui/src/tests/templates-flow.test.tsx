@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { TemplatesWorkspace } from "../features/templates/TemplatesWorkspace";
+import { ToastProvider } from "../shared/ui/ToastProvider";
 
 function jsonResponse(payload: unknown): Response {
   return new Response(JSON.stringify(payload), {
@@ -85,7 +86,9 @@ test("edits display_name and saves template", async () => {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <TemplatesWorkspace />
+      <ToastProvider>
+        <TemplatesWorkspace />
+      </ToastProvider>
     </QueryClientProvider>,
   );
 
