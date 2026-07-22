@@ -3,10 +3,13 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 import App from "./app/App";
+import { applyTheme, resolveInitialTheme } from "./shared/ui/theme";
 import { ToastProvider } from "./shared/ui/ToastProvider";
 import "./styles.css";
 
 const queryClient = new QueryClient();
+
+applyTheme(resolveInitialTheme());
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

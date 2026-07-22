@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { levelLabel, nextLevelForParent } from "../../shared/data/isa95";
 import { useToast } from "../../shared/ui/ToastProvider";
 import { ErrorBanner } from "../../shared/ui/ErrorBanner";
 import { useTemplatesListQuery } from "../templates/hooks";
@@ -9,22 +10,24 @@ import { CreateAssetActions } from "./CreateAssetActions";
 import { useAssetsTreeQuery, useCreateAssetMutation, useCreateFromTemplateMutation } from "./hooks";
 import type { AssetRecord, CreateAssetFromTemplatePayload, CreateAssetPayload } from "./types";
 
-function flattenAssets(tree: AssetRecord[]): AssetRecord[] {
-  const result: AssetRecord[] = [];
-  const stack = [...tree];
+function findAssetPath(tree: AssetRecord[], targetId: string): AssetRecord[] | null {
+  for (const node of tree) {
+    if (node.id === targetId) {
+      return [node];
+    }
 
-  while (stack.length > 0) {
-    const current = stack.shift();
-    if (!current) {
+    const children = node.children ?? [];
+    if (children.length === 0) {
       continue;
     }
-    result.push(current);
-    if (current.children?.length) {
-      stack.unshift(...current.children);
+
+    const childPath = findAssetPath(children, targetId);
+    if (childPath) {
+      return [node, ...childPath];
     }
   }
 
-  return result;
+  return null;
 }
 
 export function AssetsWorkspace() {
@@ -37,11 +40,19 @@ export function AssetsWorkspace() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
   const assets = assetsTreeQuery.data ?? [];
-  const flattenedAssets = useMemo(() => flattenAssets(assets), [assets]);
-  const selectedParent = useMemo(
-    () => flattenedAssets.find((asset) => asset.id === selectedAssetId) ?? null,
-    [flattenedAssets, selectedAssetId],
-  );
+  const selectedPath = useMemo(() => {
+    if (!selectedAssetId) {
+      return [] as AssetRecord[];
+    }
+
+    return findAssetPath(assets, selectedAssetId) ?? [];
+  }, [assets, selectedAssetId]);
+  const selectedAsset = selectedPath.at(-1) ?? null;
+  const selectedParent = selectedAsset
+    ? { id: selectedAsset.id, level: selectedAsset.asset_level, name: selectedAsset.name }
+    : null;
+  const nextCreateLevel = nextLevelForParent(selectedAsset?.asset_level ?? null);
+
   const templateOptions = useMemo(
     () =>
       (templatesQuery.data ?? []).map((template) => ({
@@ -55,6 +66,33 @@ export function AssetsWorkspace() {
   return (
     <div className="panel-grid two-col">
       <div className="panel-grid">
+        <section className="panel">
+          <div className="inline-row" style={{ justifyContent: "space-between" }}>
+            <h4 className="panel-title">Current ISA Context</h4>
+            <span className="chip">{selectedAsset ? levelLabel(selectedAsset.asset_level) : "Root"}</span>
+          </div>
+
+          {selectedPath.length === 0 ? (
+            <p className="message muted" style={{ marginTop: 8 }}>
+              No asset selected. Select a node to lock your current ISA level context.
+            </p>
+          ) : (
+            <div className="path-crumbs" style={{ marginTop: 10 }}>
+              {selectedPath.map((node) => (
+                <span className="path-crumb" key={node.id}>
+                  <span className="path-crumb-level">{levelLabel(node.asset_level)}</span>
+                  <span>{node.name}</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="inline-row" style={{ marginTop: 10 }}>
+            <span className="chip">Next level: {nextCreateLevel ? levelLabel(nextCreateLevel) : "None"}</span>
+            <span className="chip">Path: {selectedAsset ? selectedAsset.uns_path : "ROOT"}</span>
+          </div>
+        </section>
+
         <CreateAssetActions
           disabled={createManualMutation.isPending || createFromTemplateMutation.isPending}
           onCreateFromTemplate={(payload: CreateAssetFromTemplatePayload) => {
@@ -75,7 +113,7 @@ export function AssetsWorkspace() {
               onError: (error) => pushToast(error.message, "error"),
             });
           }}
-          selectedParent={selectedParent ? { id: selectedParent.id, level: selectedParent.asset_level, name: selectedParent.name } : null}
+          selectedParent={selectedParent}
           templateOptions={templateOptions}
         />
 

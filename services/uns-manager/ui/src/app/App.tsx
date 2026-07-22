@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AssetsWorkspace } from "../features/assets/AssetsWorkspace";
 import { StatusSyncBadge } from "../features/status-sync/StatusSyncBadge";
 import { useStatusSyncQuery } from "../features/status-sync/hooks";
 import type { StatusResponse } from "../features/status-sync/types";
 import { TemplatesWorkspace } from "../features/templates/TemplatesWorkspace";
+import { applyTheme, resolveInitialTheme, type ThemeMode } from "../shared/ui/theme";
 
 type ViewTab = "templates" | "assets";
 
@@ -42,6 +43,7 @@ function formatLastSync(lastSync: string | null): string {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ViewTab>("templates");
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => resolveInitialTheme());
   const statusQuery = useStatusSyncQuery();
 
   const status = statusQuery.data ?? DEFAULT_STATUS;
@@ -53,6 +55,10 @@ export default function App() {
     }),
     [status],
   );
+
+  useEffect(() => {
+    applyTheme(themeMode);
+  }, [themeMode]);
 
   return (
     <div className="app-shell">
@@ -82,7 +88,17 @@ export default function App() {
             </nav>
           </div>
 
-          <StatusSyncBadge isRefreshing={statusQuery.isFetching} status={status} />
+          <div className="header-tools">
+            <button
+              aria-label="Toggle light and dark mode"
+              className="button secondary theme-toggle"
+              onClick={() => setThemeMode((previous) => (previous === "dark" ? "light" : "dark"))}
+              type="button"
+            >
+              {themeMode === "dark" ? "Use Light Mode" : "Use Dark Mode"}
+            </button>
+            <StatusSyncBadge isRefreshing={statusQuery.isFetching} status={status} />
+          </div>
         </div>
       </header>
 
