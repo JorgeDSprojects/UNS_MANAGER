@@ -5,6 +5,10 @@ import userEvent from "@testing-library/user-event";
 import { AssetsTreePanel } from "../features/assets/AssetsTreePanel";
 import type { AssetRecord } from "../features/assets/types";
 
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
 function createNode(
   id: string,
   name: string,

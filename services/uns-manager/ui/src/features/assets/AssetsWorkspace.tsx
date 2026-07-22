@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { levelLabel, nextLevelForParent } from "../../shared/data/isa95";
 import { useToast } from "../../shared/ui/ToastProvider";
 import { ErrorBanner } from "../../shared/ui/ErrorBanner";
 import { useTemplatesListQuery } from "../templates/hooks";
@@ -9,6 +8,16 @@ import { AssetsTreePanel } from "./AssetsTreePanel";
 import { CreateAssetActions } from "./CreateAssetActions";
 import { useAssetsTreeQuery, useCreateAssetMutation, useCreateFromTemplateMutation } from "./hooks";
 import type { AssetRecord, CreateAssetFromTemplatePayload, CreateAssetPayload } from "./types";
+
+const CREATE_PANEL_EXPANDED_STORAGE_KEY = "uns-manager-create-panel-expanded";
+
+function resolveCreatePanelExpandedState(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage.getItem(CREATE_PANEL_EXPANDED_STORAGE_KEY) === "true";
+}
 
 function findAssetPath(tree: AssetRecord[], targetId: string): AssetRecord[] | null {
   for (const node of tree) {
@@ -38,7 +47,15 @@ export function AssetsWorkspace() {
   const { pushToast } = useToast();
 
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
-  const [isCreatePanelExpanded, setIsCreatePanelExpanded] = useState(false);
+  const [isCreatePanelExpanded, setIsCreatePanelExpanded] = useState<boolean>(() => resolveCreatePanelExpandedState());
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(CREATE_PANEL_EXPANDED_STORAGE_KEY, String(isCreatePanelExpanded));
+  }, [isCreatePanelExpanded]);
 
   const assets = assetsTreeQuery.data ?? [];
   const selectedPath = useMemo(() => {
@@ -52,7 +69,6 @@ export function AssetsWorkspace() {
   const selectedParent = selectedAsset
     ? { id: selectedAsset.id, level: selectedAsset.asset_level, name: selectedAsset.name }
     : null;
-  const nextCreateLevel = nextLevelForParent(selectedAsset?.asset_level ?? null);
 
   const templateOptions = useMemo(
     () =>
@@ -72,33 +88,6 @@ export function AssetsWorkspace() {
       </aside>
 
       <div className="panel-grid asset-detail-column">
-        <section className="panel">
-          <div className="inline-row" style={{ justifyContent: "space-between" }}>
-            <h4 className="panel-title">Current ISA Context</h4>
-            <span className="chip">{selectedAsset ? levelLabel(selectedAsset.asset_level) : "Root"}</span>
-          </div>
-
-          {selectedPath.length === 0 ? (
-            <p className="message muted" style={{ marginTop: 8 }}>
-              No asset selected. Select a node to lock your current ISA level context.
-            </p>
-          ) : (
-            <div className="path-crumbs" style={{ marginTop: 10 }}>
-              {selectedPath.map((node) => (
-                <span className="path-crumb" key={node.id}>
-                  <span className="path-crumb-level">{levelLabel(node.asset_level)}</span>
-                  <span>{node.name}</span>
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="inline-row" style={{ marginTop: 10 }}>
-            <span className="chip">Next level: {nextCreateLevel ? levelLabel(nextCreateLevel) : "None"}</span>
-            <span className="chip">Path: {selectedAsset ? selectedAsset.uns_path : "ROOT"}</span>
-          </div>
-        </section>
-
         <section className="panel">
           <button
             aria-expanded={isCreatePanelExpanded}

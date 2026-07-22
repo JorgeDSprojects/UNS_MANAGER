@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ISA95_LEVELS, levelLabel } from "../../shared/data/isa95";
 import { useDirtyGuard } from "../../shared/forms/useDirtyGuard";
 import { formatJson, parseJsonInput } from "../../shared/forms/jsonEditor";
 import { useToast } from "../../shared/ui/ToastProvider";
@@ -35,6 +36,8 @@ export function AssetInspectorPanel({ selectedAssetId, onDeleted }: AssetInspect
   const [analyticalJson, setAnalyticalJson] = useState("{}");
   const [scadaAvailable, setScadaAvailable] = useState(true);
   const [active, setActive] = useState(true);
+  const [copiedKey, setCopiedKey] = useState<"asset" | "descriptive" | "analytical" | null>(null);
+  const copiedFeedbackTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (detailQuery.data) {
@@ -51,6 +54,53 @@ export function AssetInspectorPanel({ selectedAssetId, onDeleted }: AssetInspect
   const analyticalParse = useMemo(() => parseJsonInput(analyticalJson), [analyticalJson]);
 
   const currentDetail = detailQuery.data;
+  const assetPath = currentDetail?.uns_path ?? "ROOT";
+  const descriptivePath = `${assetPath}.descriptive`;
+  const analyticalPath = `${assetPath}.analytical`;
+
+  useEffect(() => {
+    return () => {
+      if (copiedFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(copiedFeedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  async function copyToClipboard(
+    value: string,
+    copiedTarget: "asset" | "descriptive" | "analytical",
+    successMessage: string,
+  ): Promise<void> {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const temporaryInput = document.createElement("textarea");
+        temporaryInput.value = value;
+        temporaryInput.style.position = "fixed";
+        temporaryInput.style.opacity = "0";
+        document.body.appendChild(temporaryInput);
+        temporaryInput.focus();
+        temporaryInput.select();
+        document.execCommand("copy");
+        document.body.removeChild(temporaryInput);
+      }
+
+      if (copiedFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(copiedFeedbackTimeoutRef.current);
+      }
+
+      setCopiedKey(copiedTarget);
+      copiedFeedbackTimeoutRef.current = window.setTimeout(() => {
+        setCopiedKey(null);
+      }, 1500);
+
+      pushToast(successMessage, "success");
+    } catch {
+      pushToast("Unable to copy to clipboard", "error");
+    }
+  }
+
   const isDirty = Boolean(currentDetail) && (
     assetName !== currentDetail.name ||
     descriptiveJson !== formatJson(currentDetail.descriptive) ||
@@ -82,6 +132,33 @@ export function AssetInspectorPanel({ selectedAssetId, onDeleted }: AssetInspect
       <div className="inline-row" style={{ justifyContent: "space-between" }}>
         <h4 className="panel-title">Asset Inspector</h4>
         <span className="chip">{currentDetail?.asset_level ?? "unknown"}</span>
+      </div>
+
+      <div className="inspector-context">
+        <div className="isa-level-strip" role="list" aria-label="ISA-95 levels">
+          {ISA95_LEVELS.map((level) => (
+            <span
+              className={`isa-level-pill${currentDetail?.asset_level === level ? " is-current" : ""}`}
+              key={level}
+              role="listitem"
+            >
+              {levelLabel(level)}
+            </span>
+          ))}
+        </div>
+
+        <div className="inline-row" style={{ justifyContent: "space-between", marginTop: 8 }}>
+          <span className="chip">Current ISA level: {currentDetail ? levelLabel(currentDetail.asset_level) : "Unknown"}</span>
+          <button
+            className="button secondary"
+            onClick={() => void copyToClipboard(assetPath, "asset", "Asset path copied")}
+            type="button"
+          >
+            {copiedKey === "asset" ? "Copied" : "Copy Path"}
+          </button>
+        </div>
+
+        <p className="path-readout">Path: {assetPath}</p>
       </div>
 
       {detailQuery.isLoading ? <p className="message muted">Loading asset...</p> : null}
@@ -120,9 +197,18 @@ export function AssetInspectorPanel({ selectedAssetId, onDeleted }: AssetInspect
 
       <div className="split-fields">
         <div className="field-group">
-          <label className="field-label" htmlFor="asset-descriptive-json">
-            Descriptive (JSON)
-          </label>
+          <div className="field-label-row">
+            <label className="field-label" htmlFor="asset-descriptive-json">
+              Descriptive (JSON)
+            </label>
+            <button
+              className="copy-link"
+              onClick={() => void copyToClipboard(descriptivePath, "descriptive", "Descriptive path copied")}
+              type="button"
+            >
+              {copiedKey === "descriptive" ? "Copied" : "Copy Path"}
+            </button>
+          </div>
           <textarea
             className="field-textarea"
             id="asset-descriptive-json"
@@ -133,9 +219,18 @@ export function AssetInspectorPanel({ selectedAssetId, onDeleted }: AssetInspect
         </div>
 
         <div className="field-group">
-          <label className="field-label" htmlFor="asset-analytical-json">
-            Analytical (JSON)
-          </label>
+          <div className="field-label-row">
+            <label className="field-label" htmlFor="asset-analytical-json">
+              Analytical (JSON)
+            </label>
+            <button
+              className="copy-link"
+              onClick={() => void copyToClipboard(analyticalPath, "analytical", "Analytical path copied")}
+              type="button"
+            >
+              {copiedKey === "analytical" ? "Copied" : "Copy Path"}
+            </button>
+          </div>
           <textarea
             className="field-textarea"
             id="asset-analytical-json"

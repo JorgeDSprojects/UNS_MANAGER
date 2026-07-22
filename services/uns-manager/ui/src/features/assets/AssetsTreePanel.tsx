@@ -12,6 +12,9 @@ type AssetsTreePanelProps = {
 type CollapsedLevels = Record<Isa95Level, boolean>;
 type CollapsedNodes = Record<string, boolean>;
 
+const COLLAPSED_LEVELS_STORAGE_KEY = "uns-manager-tree-collapsed-levels";
+const COLLAPSED_NODES_STORAGE_KEY = "uns-manager-tree-collapsed-nodes";
+
 const INITIAL_COLLAPSED_LEVELS: CollapsedLevels = {
   enterprise: false,
   site: false,
@@ -19,6 +22,56 @@ const INITIAL_COLLAPSED_LEVELS: CollapsedLevels = {
   equipment: false,
   subsystem: false,
 };
+
+function resolveCollapsedLevelsState(): CollapsedLevels {
+  if (typeof window === "undefined") {
+    return INITIAL_COLLAPSED_LEVELS;
+  }
+
+  const stored = window.localStorage.getItem(COLLAPSED_LEVELS_STORAGE_KEY);
+  if (!stored) {
+    return INITIAL_COLLAPSED_LEVELS;
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as Partial<CollapsedLevels>;
+    return {
+      enterprise: parsed.enterprise === true,
+      site: parsed.site === true,
+      area: parsed.area === true,
+      equipment: parsed.equipment === true,
+      subsystem: parsed.subsystem === true,
+    };
+  } catch {
+    return INITIAL_COLLAPSED_LEVELS;
+  }
+}
+
+function resolveCollapsedNodesState(): CollapsedNodes {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const stored = window.localStorage.getItem(COLLAPSED_NODES_STORAGE_KEY);
+  if (!stored) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as Record<string, unknown>;
+    const next: CollapsedNodes = {};
+
+    for (const [key, value] of Object.entries(parsed)) {
+      if (value === true) {
+        next[key] = true;
+      }
+    }
+
+    return next;
+  } catch {
+    return {};
+  }
+}
 
 function collectLevelCounts(assets: AssetRecord[]): Record<Isa95Level, number> {
   const counts: Record<Isa95Level, number> = {
@@ -65,6 +118,23 @@ function findPathToAsset(tree: AssetRecord[], assetId: string): AssetRecord[] | 
   return null;
 }
 
+function levelAbbreviation(level: Isa95Level): string {
+  switch (level) {
+    case "enterprise":
+      return "E";
+    case "site":
+      return "S";
+    case "area":
+      return "A";
+    case "equipment":
+      return "EQ";
+    case "subsystem":
+      return "SS";
+    default:
+      return "?";
+  }
+}
+
 function renderNode(
   asset: AssetRecord,
   collapsedLevels: CollapsedLevels,
@@ -94,8 +164,15 @@ function renderNode(
             .
           </span>
         )}
+        <span
+          aria-label={`Level ${levelLabel(asset.asset_level)}`}
+          className={`tree-level-marker level-${asset.asset_level}${selectedAssetId === asset.id ? " is-selected" : ""}`}
+          title={levelLabel(asset.asset_level)}
+        >
+          {levelAbbreviation(asset.asset_level)}
+        </span>
         <button
-          className={selectedAssetId === asset.id ? "active" : ""}
+          className={`tree-asset-button${selectedAssetId === asset.id ? " active" : ""}`}
           onClick={() => {
             onSelect(asset.id);
             if (children.length > 0) {
@@ -106,7 +183,6 @@ function renderNode(
         >
           {asset.name}
         </button>
-        <span className="tag">{asset.asset_level}</span>
       </div>
       {childrenVisible ? (
         <ul>{children.map((child) => renderNode(child, collapsedLevels, collapsedNodes, selectedAssetId, onToggleNode, onSelect))}</ul>
@@ -116,14 +192,30 @@ function renderNode(
 }
 
 export function AssetsTreePanel({ assets, selectedAssetId, onSelect }: AssetsTreePanelProps) {
-  const [collapsedLevels, setCollapsedLevels] = useState<CollapsedLevels>(INITIAL_COLLAPSED_LEVELS);
-  const [collapsedNodes, setCollapsedNodes] = useState<CollapsedNodes>({});
+  const [collapsedLevels, setCollapsedLevels] = useState<CollapsedLevels>(() => resolveCollapsedLevelsState());
+  const [collapsedNodes, setCollapsedNodes] = useState<CollapsedNodes>(() => resolveCollapsedNodesState());
 
   const levelCounts = useMemo(() => collectLevelCounts(assets), [assets]);
   const collapsedCount = useMemo(
     () => ISA95_LEVELS.filter((level) => collapsedLevels[level]).length,
     [collapsedLevels],
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(COLLAPSED_LEVELS_STORAGE_KEY, JSON.stringify(collapsedLevels));
+  }, [collapsedLevels]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(COLLAPSED_NODES_STORAGE_KEY, JSON.stringify(collapsedNodes));
+  }, [collapsedNodes]);
 
   useEffect(() => {
     if (!selectedAssetId) {

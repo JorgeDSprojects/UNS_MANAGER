@@ -33,3 +33,33 @@ test("calls from-template action with selected template", async () => {
     analytical_overrides: {},
   });
 });
+
+test("switches to manual mode and creates manual asset", async () => {
+  const user = userEvent.setup();
+  const onCreateManual = vi.fn();
+
+  render(
+    <CreateAssetActions
+      selectedParent={{
+        id: "11111111-1111-1111-1111-111111111111",
+        level: "enterprise",
+        name: "ENT_1",
+      }}
+      templateOptions={[]}
+      onCreateFromTemplate={() => {}}
+      onCreateManual={onCreateManual}
+    />,
+  );
+
+  await user.click(screen.getByRole("tab", { name: "Manual" }));
+  await user.type(screen.getByLabelText("Name"), "SITE_MANUAL_1");
+  await user.click(screen.getByRole("button", { name: "Create Manual" }));
+
+  expect(onCreateManual).toHaveBeenCalledWith({
+    parent_id: "11111111-1111-1111-1111-111111111111",
+    asset_level: "site",
+    name: "SITE_MANUAL_1",
+    descriptive: {},
+    analytical: {},
+  });
+});
