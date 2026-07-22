@@ -142,6 +142,14 @@ CREATE INDEX idx_asset_info_name ON asset_informational(name);
 CREATE INDEX idx_asset_info_category ON asset_informational(category);
 CREATE INDEX idx_asset_info_active ON asset_informational(is_active) WHERE is_active = true;
 
+CREATE TABLE sync_runtime_state (
+    service_name VARCHAR(50) PRIMARY KEY,
+    mqtt_connected BOOLEAN NOT NULL DEFAULT false,
+    last_sync_at TIMESTAMPTZ,
+    sync_lag_seconds DOUBLE PRECISION,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN

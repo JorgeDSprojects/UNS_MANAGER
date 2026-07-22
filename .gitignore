@@ -3,3 +3,7 @@ __pycache__/
 .pytest_cache/
 .env
 .superpowers/
+services/uns-manager/ui/node_modules/
+services/uns-manager/ui/dist/
+services/uns-manager/ui/test-results/
+services/uns-manager/ui/playwright-report/

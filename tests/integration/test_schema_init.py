@@ -16,6 +16,7 @@ def test_schema_objects_exist(db_conn):
         "asset_informational",
         "asset_templates",
         "assets",
+        "sync_runtime_state",
         "template_children",
         "template_informational",
     }

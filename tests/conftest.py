@@ -18,6 +18,7 @@ def _test_dsn() -> str:
 
 _CLEAN_SQL = """
 TRUNCATE TABLE
+    uns_registry.sync_runtime_state,
     uns_registry.asset_informational,
     uns_registry.assets,
     uns_registry.template_informational,
@@ -52,6 +53,20 @@ def db_conn():
         )
         if not schema_ready:
             loop.run_until_complete(conn.execute(init_sql))
+
+        loop.run_until_complete(
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS uns_registry.sync_runtime_state (
+                    service_name VARCHAR(50) PRIMARY KEY,
+                    mqtt_connected BOOLEAN NOT NULL DEFAULT false,
+                    last_sync_at TIMESTAMPTZ,
+                    sync_lag_seconds DOUBLE PRECISION,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+                """
+            )
+        )
 
         loop.run_until_complete(conn.execute(_CLEAN_SQL))
         yield conn, loop

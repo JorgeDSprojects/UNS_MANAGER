@@ -31,10 +31,37 @@ async def status(request: Request) -> dict:
             GROUP BY asset_level
             """
         )
+        sync_table_exists = await conn.fetchval(
+            "SELECT to_regclass('uns_registry.sync_runtime_state') IS NOT NULL"
+        )
+        sync_row = None
+        if sync_table_exists:
+            sync_row = await conn.fetchrow(
+                """
+                SELECT mqtt_connected, last_sync_at, sync_lag_seconds, updated_at
+                FROM uns_registry.sync_runtime_state
+                WHERE service_name = 'sync-service'
+                """
+            )
 
     assets_by_level = {level: 0 for level in _ASSET_LEVELS}
     for row in rows:
         assets_by_level[row["asset_level"]] = int(row["total"])
+
+    mqtt_connected = bool(sync_row["mqtt_connected"]) if sync_row else False
+    last_sync_at = sync_row["last_sync_at"].isoformat() if sync_row and sync_row["last_sync_at"] else None
+    sync_lag_seconds = (
+        float(sync_row["sync_lag_seconds"]) if sync_row and sync_row["sync_lag_seconds"] is not None else None
+    )
+
+    sync_state = "degraded"
+    if sync_row:
+        if not mqtt_connected:
+            sync_state = "down"
+        elif sync_lag_seconds is not None and sync_lag_seconds > 60.0:
+            sync_state = "degraded"
+        else:
+            sync_state = "healthy"
 
     return {
         "service": _SERVICE_NAME,
@@ -43,4 +70,8 @@ async def status(request: Request) -> dict:
         "assets_count": int(assets_count),
         "informational_fields_count": int(informational_fields_count),
         "assets_by_level": assets_by_level,
+        "sync_state": sync_state,
+        "mqtt_connected": mqtt_connected,
+        "last_sync_at": last_sync_at,
+        "sync_lag_seconds": sync_lag_seconds,
     }

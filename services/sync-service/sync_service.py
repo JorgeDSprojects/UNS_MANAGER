@@ -50,6 +50,7 @@ class SyncService:
 
     async def _run_session(self) -> None:
         self._pool = await self._create_pool(self.settings.postgres_dsn)
+        await self._upsert_sync_runtime_state(mqtt_connected=False, sync_lag_seconds=None)
 
         mqtt_kwargs: dict[str, Any] = {
             "hostname": self.settings.mqtt_host,
@@ -64,10 +65,16 @@ class SyncService:
         try:
             async with aiomqtt.Client(**mqtt_kwargs) as mqtt_client:
                 self._mqtt_client = mqtt_client
+                await self._upsert_sync_runtime_state(mqtt_connected=True, sync_lag_seconds=None)
                 await self.full_sync()
                 await self.listen_for_changes()
         finally:
             self._mqtt_client = None
+            if self._pool is not None:
+                try:
+                    await self._upsert_sync_runtime_state(mqtt_connected=False, sync_lag_seconds=None)
+                except Exception as exc:
+                    self.logger.warning("Could not persist disconnected sync state: %s", exc)
             if self._pool is not None:
                 await self._pool.close()
                 self._pool = None
@@ -109,6 +116,7 @@ class SyncService:
             descriptive_count,
             analytical_count,
         )
+        await self._upsert_sync_runtime_state(mqtt_connected=True, sync_lag_seconds=0.0)
 
     async def listen_for_changes(self) -> None:
         if self._pool is None:
@@ -148,6 +156,7 @@ class SyncService:
         if operation == "DELETE":
             if isinstance(uns_path, str) and uns_path:
                 await self._clear_retained(uns_path)
+                await self._upsert_sync_runtime_state(mqtt_connected=True, sync_lag_seconds=0.0)
             return
 
         if asset_id is None:
@@ -158,10 +167,48 @@ class SyncService:
         if asset is None:
             if isinstance(uns_path, str) and uns_path:
                 await self._clear_retained(uns_path)
+                await self._upsert_sync_runtime_state(mqtt_connected=True, sync_lag_seconds=0.0)
             return
 
         include_analytical = not operation.startswith("FIELD_")
         await self._publish_asset(asset, include_analytical=include_analytical)
+        await self._upsert_sync_runtime_state(mqtt_connected=True, sync_lag_seconds=0.0)
+
+    async def _upsert_sync_runtime_state(
+        self,
+        mqtt_connected: bool,
+        sync_lag_seconds: float | None,
+    ) -> None:
+        pool = self._require_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO uns_registry.sync_runtime_state (
+                    service_name,
+                    mqtt_connected,
+                    last_sync_at,
+                    sync_lag_seconds,
+                    updated_at
+                ) VALUES (
+                    'sync-service',
+                    $1,
+                    CASE WHEN $1 THEN now() ELSE NULL END,
+                    $2,
+                    now()
+                )
+                ON CONFLICT (service_name)
+                DO UPDATE SET
+                    mqtt_connected = EXCLUDED.mqtt_connected,
+                    last_sync_at = CASE
+                        WHEN EXCLUDED.last_sync_at IS NOT NULL THEN EXCLUDED.last_sync_at
+                        ELSE uns_registry.sync_runtime_state.last_sync_at
+                    END,
+                    sync_lag_seconds = EXCLUDED.sync_lag_seconds,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                mqtt_connected,
+                sync_lag_seconds,
+            )
 
     async def _publish_asset(self, asset: dict[str, Any], include_analytical: bool) -> tuple[int, int]:
         descriptive_count = 0
