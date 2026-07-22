@@ -270,7 +270,7 @@ export function AssetsTreePanel({ assets, selectedAssetId, onSelect }: AssetsTre
           return (
             <button
               aria-pressed={collapsed}
-              className={`level-toggle${collapsed ? " is-collapsed" : ""}`}
+              className={`level-toggle level-${level}${collapsed ? " is-collapsed" : ""}`}
               key={level}
               onClick={() =>
                 setCollapsedLevels((previous) => ({

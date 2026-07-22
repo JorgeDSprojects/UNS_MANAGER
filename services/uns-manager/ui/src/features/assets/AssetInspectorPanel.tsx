@@ -129,10 +129,7 @@ export function AssetInspectorPanel({ selectedAssetId, onDeleted }: AssetInspect
 
   return (
     <section className="panel">
-      <div className="inline-row" style={{ justifyContent: "space-between" }}>
-        <h4 className="panel-title">Asset Inspector</h4>
-        <span className="chip">{currentDetail?.asset_level ?? "unknown"}</span>
-      </div>
+      <h4 className="panel-title">Asset Inspector</h4>
 
       <div className="inspector-context">
         <div className="isa-level-strip" role="list" aria-label="ISA-95 levels">
@@ -147,8 +144,7 @@ export function AssetInspectorPanel({ selectedAssetId, onDeleted }: AssetInspect
           ))}
         </div>
 
-        <div className="inline-row" style={{ justifyContent: "space-between", marginTop: 8 }}>
-          <span className="chip">Current ISA level: {currentDetail ? levelLabel(currentDetail.asset_level) : "Unknown"}</span>
+        <div className="inline-row" style={{ justifyContent: "flex-end", marginTop: 8 }}>
           <button
             className="button secondary"
             onClick={() => void copyToClipboard(assetPath, "asset", "Asset path copied")}

@@ -55,6 +55,7 @@ This file is the operational source of truth for agent-driven development in thi
   - `scripts/restart.sh`
   - `scripts/logs.sh`
   - `scripts/status.sh`
+- At the end of development work that modifies a Dockerized service, rebuild its image and recreate the affected container so the changes are visible in the running environment.
 
 ### SHOULD
 - Use `set -euo pipefail` in scripts.

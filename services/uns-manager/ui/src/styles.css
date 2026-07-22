@@ -583,8 +583,37 @@ select {
 }
 
 .level-toggle.is-collapsed {
-  border-color: var(--warn);
-  color: var(--warn);
+  opacity: 0.62;
+}
+
+.level-toggle.level-enterprise {
+  background: var(--isa-enterprise-bg);
+  border-color: var(--isa-enterprise-border);
+  color: var(--isa-enterprise-text);
+}
+
+.level-toggle.level-site {
+  background: var(--isa-site-bg);
+  border-color: var(--isa-site-border);
+  color: var(--isa-site-text);
+}
+
+.level-toggle.level-area {
+  background: var(--isa-area-bg);
+  border-color: var(--isa-area-border);
+  color: var(--isa-area-text);
+}
+
+.level-toggle.level-equipment {
+  background: var(--isa-equipment-bg);
+  border-color: var(--isa-equipment-border);
+  color: var(--isa-equipment-text);
+}
+
+.level-toggle.level-subsystem {
+  background: var(--isa-subsystem-bg);
+  border-color: var(--isa-subsystem-border);
+  color: var(--isa-subsystem-text);
 }
 
 .level-toggle-icon {
@@ -641,26 +670,35 @@ select {
 }
 
 .isa-level-strip {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .isa-level-pill {
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 4px 6px;
-  font-size: 0.7rem;
+  padding: 2px 8px;
+  min-height: 24px;
+  font-size: 0.72rem;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dim);
+  opacity: 0.55;
+  transition: opacity 160ms ease, filter 160ms ease, box-shadow 160ms ease;
 }
 
 .isa-level-pill.is-current {
   color: var(--text-on-accent);
   border-color: var(--accent);
   background: linear-gradient(180deg, var(--accent-strong), var(--accent));
+  opacity: 1;
+  filter: saturate(1.12);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 
 .path-readout {
@@ -920,9 +958,6 @@ select {
     align-items: flex-start;
   }
 
-  .isa-level-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 720px) {
@@ -958,7 +993,4 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .isa-level-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
